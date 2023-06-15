@@ -112,7 +112,7 @@ logic is changing and that production service is stable.
 Getting Involved
 ----------------
 
-BentoML has a thriving open source community where hundreds of ML practitioners are
+Bentoml has a thriving open source community where hundreds of ML practitioners are
 contributing to the project, helping other users and discuss all things MLOps.
 `👉 Join us on slack today! <https://l.bentoml.com/join-slack>`_
 

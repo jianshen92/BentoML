@@ -146,7 +146,7 @@ html_show_sphinx = False
 html_favicon = "_static/img/favicon-96x96.ico"
 
 # Private dictionary for spell checker
-spelling_word_list_filename = ["bentoml_wordlist.txt"]
+spelling_word_list_filename = ["bentoml_wordlist.txt","bentoml_wordlist_case_sensitive.txt"]
 
 # mock any heavy imports, eg: imports from frameworks library
 autodoc_mock_imports = [
