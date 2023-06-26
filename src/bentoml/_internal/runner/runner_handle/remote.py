@@ -281,7 +281,11 @@ class RemoteRunnerClient(RunnerHandle):
         **kwargs: P.kwargs,
     ) -> R | tuple[R, ...]:
         import anyio
+        from anyio._core._eventloop import threadlocals
 
+        print("--2--")
+        print(__bentoml_method)
+        print(threadlocals.current_async_module)
         return t.cast(
             "R | tuple[R, ...]",
             anyio.from_thread.run(
