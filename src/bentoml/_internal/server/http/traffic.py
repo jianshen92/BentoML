@@ -20,6 +20,7 @@ class TimeoutMiddleware:
     ) -> None:
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
+        print("---hello---")
         async with anyio.create_task_group():
             try:
                 with anyio.fail_after(self.timeout):
