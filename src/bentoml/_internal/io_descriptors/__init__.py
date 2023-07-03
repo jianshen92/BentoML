@@ -11,6 +11,7 @@ from .numpy import NumpyNdarray
 from .pandas import PandasSeries
 from .pandas import PandasDataFrame
 from .multipart import Multipart
+from .text_stream import TextStream
 
 __all__ = [
     "IO_DESCRIPTOR_REGISTRY",
@@ -24,4 +25,5 @@ __all__ = [
     "PandasSeries",
     "Text",
     "from_spec",
+    "TextStream"
 ]

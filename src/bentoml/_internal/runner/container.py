@@ -479,6 +479,9 @@ class DefaultContainer(DataContainer[t.Any, t.List[t.Any]]):
         if isinstance(batch, t.Generator):  # Generators can't be pickled
             batch = list(t.cast(t.Generator[t.Any, t.Any, t.Any], batch))
 
+        print("--DefaultContainer.to_payload--")
+        print(batch)
+        print(type(batch))
         data = pickle.dumps(batch)
 
         if isinstance(batch, list):
@@ -606,11 +609,27 @@ register_builtin_containers()
 
 
 class AutoContainer(DataContainer[t.Any, t.Any]):
+    
     @classmethod
     def to_payload(cls, batch: t.Any, batch_dim: int) -> Payload:
+        def print_call_stack():
+            import inspect
+            stack = inspect.stack()
+            print("Call stack:")
+            for frame_info in stack:
+                filename = frame_info.filename
+                lineno = frame_info.lineno
+                function = frame_info.function
+                print(f"  File '{filename}', line {lineno}, in {function}")
+
+        print_call_stack()
+        print("---AutoContainer.to_payload---")
+        print(batch, batch_dim)
         container_cls: t.Type[
             DataContainer[t.Any, t.Any]
         ] = DataContainerRegistry.find_by_batch_type(type(batch))
+
+        print(container_cls)
         return container_cls.to_payload(batch, batch_dim)
 
     @classmethod

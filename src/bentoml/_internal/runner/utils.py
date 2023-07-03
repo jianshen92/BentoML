@@ -92,6 +92,9 @@ class Params(t.Generic[T]):
         except StopIteration:
             pass
 
+    def __repr__(self) -> str:
+        return f"Params({self.args}, {self.kwargs})"
+    
     @classmethod
     def agg(
         cls,
