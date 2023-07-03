@@ -250,6 +250,8 @@ class RunnerAppFactory(BaseAppFactory):
 
                 ret = await runner_method.async_run(*params.args, **params.kwargs)
 
+                print("---_mk_request_handler.infer_single")
+                print(ret)
                 payload = AutoContainer.to_payload(ret, 0)
                 return (payload,)
 
@@ -268,6 +270,10 @@ class RunnerAppFactory(BaseAppFactory):
             else:
                 params: Params[t.Any] = pickle.loads(r_)
 
+            print("--RunnerAppFactory._request_handler--")
+            print(r_)
+            print(params)
+            print(self.dispatchers)
             try:
                 payload = await infer(params)
             except BentoMLException as e:

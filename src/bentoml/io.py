@@ -11,6 +11,7 @@ from ._internal.io_descriptors.pandas import PandasSeries
 from ._internal.io_descriptors.pandas import PandasDataFrame
 from ._internal.io_descriptors.multipart import Multipart
 
+from ._internal.io_descriptors.text_stream import TextStream
 __all__ = [
     "File",
     "Image",
@@ -22,4 +23,5 @@ __all__ = [
     "PandasSeries",
     "Text",
     "from_spec",
+    "TextStream"
 ]

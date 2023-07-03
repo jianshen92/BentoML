@@ -171,10 +171,6 @@ class RemoteRunnerClient(RunnerHandle):
 
         inp_batch_dim = __bentoml_method.config.batch_dim[0]
 
-        payload_params = Params[Payload](*args, **kwargs).map(
-            functools.partial(AutoContainer.to_payload, batch_dim=inp_batch_dim)
-        )
-
         headers = {
             "Bento-Name": component_context.bento_name,
             "Bento-Version": component_context.bento_version,
@@ -184,6 +180,10 @@ class RemoteRunnerClient(RunnerHandle):
         }
         total_args_num = len(args) + len(kwargs)
         headers["Args-Number"] = str(total_args_num)
+
+        print("RemoteRunnerClient.async_run_method")
+        print(f"{total_args_num=}")
+        print(f"{args=}, {kwargs=}")
 
         if total_args_num == 1:
             # FIXME: also considering kwargs
@@ -285,11 +285,7 @@ class RemoteRunnerClient(RunnerHandle):
         **kwargs: P.kwargs,
     ) -> R | tuple[R, ...]:
         import anyio
-        from anyio._core._eventloop import threadlocals
 
-        print("--2--")
-        print(__bentoml_method)
-        print(threadlocals.current_async_module)
         return t.cast(
             "R | tuple[R, ...]",
             anyio.from_thread.run(

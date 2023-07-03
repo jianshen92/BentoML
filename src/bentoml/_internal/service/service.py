@@ -309,6 +309,24 @@ class Service:
             return func
 
         return decorator
+    
+    def stream(
+        self,
+        input: IODescriptor[t.Any],  # pylint: disable=redefined-builtin
+        output: IODescriptor[t.Any],
+        name: t.Optional[str] = None,
+        doc: t.Optional[str] = None,
+        route: t.Optional[str] = None,
+    ) -> t.Callable[[t.Callable[..., t.Any]], t.Callable[..., t.Any]]:
+        """Decorator for adding InferenceAPI to this service"""
+
+        D = t.TypeVar("D", bound=t.Callable[..., t.Any])
+
+        def decorator(func: D) -> D:
+            add_inference_api(self, func, input, output, name, doc, route)
+            return func
+
+        return decorator
 
     def __str__(self):
         if self.bento:
