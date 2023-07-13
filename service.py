@@ -1,39 +1,44 @@
 import bentoml
+import asyncio
 
 class SSERunnable(bentoml.Runnable):
     SUPPORTED_RESOURCES = ("cpu",)
-    SUPPORTS_CPU_MULTI_THREADING = False
+    SUPPORTS_CPU_MULTI_THREADING = True
 
-    @bentoml.Runnable.method(batchable=False)
-    def predict(self, ins:str):
-        # for i in range(10):
-        return f"given {ins}"
+    @bentoml.Runnable.stream_method()
+    async def count(self, input_text:str):
+        for i in range(10):
+            await asyncio.sleep(1)
+            yield f"async {i} {input_text} \n\n"
 
-async def run(ins:str):
-    return f"given {ins}"
+    @bentoml.Runnable.stream_method()
+    async def generate(self, prompt:str):
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+        from transformers import AutoTokenizer, TextIteratorStreamer
+        from threading import Thread
 
-from starlette.responses import StreamingResponse
-# from starlette.routing import Route
-import asyncio
-# import time
+        model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
+        tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
-# async def hello():
-async def event_stream():
-    for i in range(5):
-        yield f"{i} \n\n"
-        await asyncio.sleep(1)
+        inputs = tokenizer(prompt, return_tensors="pt")
+        streamer = TextIteratorStreamer(tokenizer)
+        generation_kwargs = dict(inputs, streamer=streamer, max_new_tokens=300)
+        thread = Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
 
-    # return StreamingResponse(event_stream(), media_type="text/event-stream")
-     
+        for new_text in streamer:
+            yield f"{new_text} \n\n"
 
 sse_runner = bentoml.Runner(SSERunnable)
-
-# svc = bentoml.Service("sse", runners=[sse_runner])
-svc = bentoml.Service("sse")
+svc = bentoml.Service("sse", runners=[sse_runner])
 
 @svc.stream(input=bentoml.io.Text(), output=bentoml.io.TextStream())
-async def predict(input_text:str):
-    # ret = await sse_runner.predict.async_run(input_text)
-    # return await run(input_text)
-    # ret = await event_stream()
-    return event_stream()
+async def count(input_text:str):
+    ret = await sse_runner.count.async_run(input_text)
+    return ret
+
+@svc.stream(input=bentoml.io.Text(), output=bentoml.io.TextStream())
+async def generate(input_text:str):
+    ret = await sse_runner.generate.async_run(input_text)
+    async for i in ret:
+        yield i 

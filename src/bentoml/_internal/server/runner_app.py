@@ -40,6 +40,8 @@ if TYPE_CHECKING:
     from ..runner.runner import RunnerMethod
     from ..types import LifecycleHook
 
+from ..marshal.dispatcher import StreamDispatcher
+
 
 class RunnerAppFactory(BaseAppFactory):
     @inject
@@ -53,7 +55,7 @@ class RunnerAppFactory(BaseAppFactory):
         self.worker_index = worker_index
         self.enable_metrics = enable_metrics
 
-        self.dispatchers: dict[str, CorkDispatcher] = {}
+        self.dispatchers: dict[str, CorkDispatcher | StreamDispatcher] = {}
 
         runners_config = BentoMLContainer.runners_config.get()
         traffic = runners_config.get("traffic", {}).copy()
@@ -68,11 +70,14 @@ class RunnerAppFactory(BaseAppFactory):
 
         for method in runner.runner_methods:
             max_batch_size = method.max_batch_size if method.config.batchable else -1
-            self.dispatchers[method.name] = CorkDispatcher(
-                max_latency_in_ms=method.max_latency_ms,
-                max_batch_size=max_batch_size,
-                fallback=fallback,
-            )
+            if method.config.is_stream:
+                self.dispatchers[method.name] = StreamDispatcher()
+            else:
+                self.dispatchers[method.name] = CorkDispatcher(
+                    max_latency_in_ms=method.max_latency_ms,
+                    max_batch_size=max_batch_size,
+                    fallback=fallback,
+                )
 
     @property
     def name(self) -> str:
@@ -245,19 +250,33 @@ class RunnerAppFactory(BaseAppFactory):
             infer = self.dispatchers[runner_method.name](infer_batch)
         else:
 
-            async def infer_single(paramss: t.Sequence[Params[t.Any]]):
+            async def infer_single(paramss: t.Sequence[Params[t.Any]]) -> tuple[Payload]:
+                print("---_mk_request_handler.infer_single")
+                print(paramss)
                 assert len(paramss) == 1
 
                 params = paramss[0].map(AutoContainer.from_payload)
 
                 ret = await runner_method.async_run(*params.args, **params.kwargs)
 
-                print("---_mk_request_handler.infer_single")
+                print(type(ret))
+                # STREAMING HACK
+                import inspect
+                if inspect.isgenerator(ret) or inspect.isasyncgen(ret):
+                    # TODO: STREAMING
+                    ## Converting Data to Container, has to happen here, and returns an async generator
+                    return ret
+                    
+                # END STREAMING HACK
+                print("---_mk_request_handler.infer_single--- ret---")
                 print(ret)
                 payload = AutoContainer.to_payload(ret, 0)
                 return (payload,)
 
             infer = self.dispatchers[runner_method.name](infer_single)
+
+        print("-------------------")
+        print("_mk_request_handler")
 
         async def _request_handler(request: Request) -> Response:
             assert self._is_ready
@@ -275,8 +294,16 @@ class RunnerAppFactory(BaseAppFactory):
             print(r_)
             print(params)
             print(self.dispatchers)
+            print("### infer ###")
+            print(infer)
+            # return None
             try:
-                payload = await infer(params)
+                # prediction
+                payload = await infer(params) 
+                # for streaming, this will return a generator
+                print("----payload----")
+                print(payload)
+                print(type(payload))
             except BentoMLException as e:
                 # pass known exceptions to the client
                 return Response(
@@ -288,6 +315,15 @@ class RunnerAppFactory(BaseAppFactory):
                         "Server": server_str,
                     },
                 )
+            ## STREAMING HACK
+            import inspect
+            from starlette.responses import StreamingResponse
+            if inspect.isgenerator(payload) or inspect.isasyncgen(payload):
+                print("--returning StreamResponse--")
+                print(payload)
+                return StreamingResponse(payload, media_type="text/event-stream")
+            ## STREAMING HACK END
+
             if isinstance(payload, ServiceUnavailable):
                 return Response(
                     "Service Busy",

@@ -95,8 +95,12 @@ class RemoteRunnerClient(RunnerHandle):
             or self._loop.is_closed()
         ):
             self._loop = asyncio.get_event_loop()  # get the loop lazily
+
             bind_uri = self._remote_runner_server_map[self._runner.name]
             parsed = urlparse(bind_uri)
+            print("--RemoteRunnerClient._get_conn--")
+            print(f"{bind_uri=}")
+            print(f"{parsed}")
             if parsed.scheme == "file":
                 path = uri_to_path(bind_uri)
                 self._conn = aiohttp.UnixConnector(
@@ -165,6 +169,7 @@ class RemoteRunnerClient(RunnerHandle):
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> R | tuple[R, ...]:
+        
         import aiohttp
 
         from ...runner.container import AutoContainer
@@ -181,7 +186,7 @@ class RemoteRunnerClient(RunnerHandle):
         total_args_num = len(args) + len(kwargs)
         headers["Args-Number"] = str(total_args_num)
 
-        print("RemoteRunnerClient.async_run_method")
+        print("--RemoteRunnerClient.async_run_method - 1--")
         print(f"{total_args_num=}")
         print(f"{args=}, {kwargs=}")
 
@@ -215,14 +220,39 @@ class RemoteRunnerClient(RunnerHandle):
             data = pickle.dumps(payload_params)  # FIXME: pickle inside pickle
 
         path = "" if __bentoml_method.name == "__call__" else __bentoml_method.name
+        
         async with self._semaphore:
             try:
-                async with self._client.post(
-                    f"{self._addr}/{path}",
-                    data=data,
-                    headers=headers,
-                ) as resp:
-                    body = await resp.read()
+                print("--did I come here--")
+                print("--RemoteRunnerClient.async_run_method - 2--")
+                print(f"{self._addr}/{path}")
+                print(f"{data=}, {headers=}")
+                print(self._client)
+
+                ## STREAMING HACK
+                if __bentoml_method.config.is_stream:
+                    async def stream_resp():
+                        async with self._client.post(
+                            f"{self._addr}/{path}",
+                            data=data,
+                            headers=headers,
+                        ) as resp:
+                            async for line in resp.content.iter_any():
+                                # TODO: STREAMING
+                                # Converting container into data, has to happen here.
+                                yield line
+                    
+                    return stream_resp()
+                ## STREAMING HACK END
+                else:                 
+                    async with self._client.post(
+                        f"{self._addr}/{path}",
+                        data=data,
+                        headers=headers,
+                    ) as resp:
+                        body = await resp.read()
+                        print("--body--")
+                        print(body)
             except aiohttp.ClientOSError as e:
                 if os.getenv("BENTOML_RETRY_RUNNER_REQUESTS", "").lower() == "true":
                     try:
@@ -234,6 +264,7 @@ class RemoteRunnerClient(RunnerHandle):
                             headers=headers,
                         ) as resp:
                             body = await resp.read()
+                            # for streaming, this has to return a generator
                     except aiohttp.ClientOSError:
                         raise RemoteException("Failed to connect to runner server.")
                 else:

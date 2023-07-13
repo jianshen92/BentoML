@@ -49,9 +49,17 @@ class RunnerMethod(t.Generic[T, P, R]):
     max_latency_ms: int
 
     def run(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        print("--RunnerMethod.run--")
+        print(self.runner._runner_handle)
+        print(self.runner)
+        print(self.name)
         return self.runner._runner_handle.run_method(self, *args, **kwargs)
 
     async def async_run(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        print("--RunnerMethod.asnyc_run--")
+        print(self.runner._runner_handle)
+        print(self.runner)
+        print(self.name)
         return await self.runner._runner_handle.async_run_method(self, *args, **kwargs)
 
 

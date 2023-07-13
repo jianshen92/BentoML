@@ -63,6 +63,7 @@ class Runnable:
         input_spec: LazyType[t.Any] | t.Tuple[LazyType[t.Any], ...] | None = None,
         output_spec: LazyType[t.Any] | None = None,
     ):
+        print("--Runnable.add_method--")
         meth = Runnable.method(
             method,
             batchable=batchable,
@@ -128,7 +129,62 @@ class Runnable:
             return method_decorator(meth)
         return method_decorator
 
+    @overload
+    @staticmethod
+    def stream_method(
+        meth: t.Callable[t.Concatenate[T, P], R],
+        *,
+        batchable: bool = False,
+        batch_dim: tuple[int, int] | int = 0,
+        input_spec: AnyType | tuple[AnyType, ...] | None = None,
+        output_spec: AnyType | None = None,
+    ) -> RunnableMethod[T, P, R]:
+        ...
 
+    @overload
+    @staticmethod
+    def stream_method(
+        meth: None = None,
+        *,
+        batchable: bool = False,
+        batch_dim: tuple[int, int] | int = 0,
+        input_spec: AnyType | tuple[AnyType, ...] | None = None,
+        output_spec: AnyType | None = None,
+    ) -> t.Callable[[t.Callable[t.Concatenate[T, P], R]], RunnableMethod[T, P, R]]:
+        ...
+
+    @staticmethod
+    def stream_method(
+        meth: t.Callable[t.Concatenate[T, P], R] | None = None,
+        *,
+        batchable: bool = False,
+        batch_dim: tuple[int, int] | int = 0,
+        input_spec: AnyType | tuple[AnyType, ...] | None = None,
+        output_spec: AnyType | None = None,
+    ) -> (
+        t.Callable[[t.Callable[t.Concatenate[T, P], R]], RunnableMethod[T, P, R]]
+        | RunnableMethod[T, P, R]
+    ):
+        def method_decorator(
+            meth: t.Callable[t.Concatenate[T, P], R]
+        ) -> RunnableMethod[T, P, R]:
+            return RunnableMethod(
+                meth,
+                RunnableMethodConfig(
+                    batchable=batchable,
+                    batch_dim=(batch_dim, batch_dim)
+                    if isinstance(batch_dim, int)
+                    else batch_dim,
+                    input_spec=input_spec,
+                    output_spec=output_spec,
+                    is_stream=True
+                ),
+            )
+
+        if callable(meth):
+            return method_decorator(meth)
+        return method_decorator
+    
 @attr.define
 class RunnableMethod(t.Generic[T, P, R]):
     func: t.Callable[t.Concatenate[T, P], R]
@@ -153,3 +209,4 @@ class RunnableMethodConfig:
     batch_dim: tuple[int, int]
     input_spec: AnyType | tuple[AnyType, ...] | None = None
     output_spec: AnyType | None = None
+    is_stream: bool = False

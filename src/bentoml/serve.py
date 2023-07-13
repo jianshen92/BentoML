@@ -292,6 +292,8 @@ def serve_http_production(
                 sockets_path = os.path.join(uds_path, f"{id(runner)}.sock")
                 assert len(sockets_path) < MAX_AF_UNIX_PATH_LENGTH
 
+                print("--serve_http_production--")
+                print(f"{runner.name} listening on {sockets_path}")
                 runner_bind_map[runner.name] = path_to_uri(sockets_path)
                 circus_socket_map[runner.name] = CircusSocket(
                     name=runner.name,

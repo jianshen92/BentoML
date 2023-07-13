@@ -168,6 +168,8 @@ class CorkDispatcher:
             [t.Sequence[T_IN]], t.Coroutine[None, None, t.Sequence[T_OUT]]
         ],
     ) -> t.Callable[[T_IN], t.Coroutine[None, None, T_OUT]]:
+        print("CorkDispatcher.__call__")
+        print(callback)
         self.callback = callback
 
         @functools.wraps(callback)
@@ -190,6 +192,10 @@ class CorkDispatcher:
         num_reqs_to_train: int,
         batch_size: int,
     ):
+        print("train_optimizer")
+        print(f"num_required_reqs: {num_required_reqs}")
+        print(f"num_reqs_to_train: {num_reqs_to_train}")
+        print(f"batch_size: {batch_size}")
         if self.max_batch_size < batch_size:
             batch_size = self.max_batch_size
 
@@ -255,6 +261,8 @@ class CorkDispatcher:
                 for info in inputs_info:
                     # fake wait as 0 for training requests
                     info.enqueue_time = now
+                print("--train_optimizer ending--")
+                print(f"inputs_info: {inputs_info}")
                 self._loop.create_task(self.outbound_call(inputs_info))
         except Exception as e:  # pylint: disable=broad-except
             logger.error(traceback.format_exc(), exc_info=e)
@@ -265,10 +273,12 @@ class CorkDispatcher:
         """
         try:
             logger.debug("Starting dispatcher optimizer training...")
+            print("aaaaaaaaa")
             # warm up the model
             await self.train_optimizer(
                 self.optimizer.N_SKIPPED_SAMPLE, self.optimizer.N_SKIPPED_SAMPLE + 6, 1
             )
+            print("bbbbbbbbb")
 
             logger.debug("Dispatcher finished warming up model.")
 
@@ -283,16 +293,12 @@ class CorkDispatcher:
             await self.train_optimizer(3, 1, 3)
             self.optimizer.trigger_refresh()
             logger.debug("Dispatcher finished optimizer training request 3.")
-
-            if self.optimizer.o_a + self.optimizer.o_b >= self.max_latency:
-                logger.warning(
-                    "BentoML has detected that a service has a max latency that is likely too low for serving. If many 503 errors are encountered, try raising the 'runner.max_latency' in your BentoML configuration YAML file."
-                )
-            logger.debug("Dispatcher optimizer training complete.")
         except Exception as e:  # pylint: disable=broad-except
+            print("eeeeeeee")
             logger.error(traceback.format_exc(), exc_info=e)
 
         while True:
+            print("fffffffff")
             try:
                 async with self._wake_event:  # block until there's any request in queue
                     await self._wake_event.wait_for(self._queue.__len__)
@@ -355,6 +361,7 @@ class CorkDispatcher:
                 logger.error(traceback.format_exc(), exc_info=e)
 
     async def inbound_call(self, data: Params[Payload]):
+        print("CorkedDispatcher.inbound_call")
         if self.max_batch_size > 0 and data.sample.batch_size > self.max_batch_size:
             raise RuntimeError(
                 f"batch of size {data.sample.batch_size} exceeds configured max batch size of {self.max_batch_size}."
@@ -401,3 +408,50 @@ class CorkDispatcher:
                     if not fut.done():
                         fut.cancel()
             self._sema.release()
+
+class StreamDispatcher:
+    """
+    StreamDispatcher is a dispatcher that dispatches requests to the user defined
+    callback function as soon as the request arrives. It does not do any batching
+    or optimization.
+    """
+
+    def __init__(self):
+        pass
+
+    def shutdown(self):
+        pass
+
+    async def inbound_call(self, data: Params[Payload]) -> t.Sequence[Params[Payload]]:
+        return await self.callback((data,))
+
+    async def outbound_call(self):
+        pass
+
+    async def controller(self):
+        pass
+
+    def __call__(
+        self,
+        callback: t.Callable[
+            [t.Sequence[T_IN]], t.Coroutine[None, None, t.Sequence[T_OUT]]
+        ],
+    ) -> t.Callable[[T_IN], t.Coroutine[None, None, T_OUT]]:
+        print("StreamDispatcher.__call__")
+        print(callback)
+        self.callback = callback
+
+        @functools.wraps(callback)
+        async def _func(data: t.Any) -> t.Any:
+            try:
+                print("StreamDispatcher.__call__._func")
+                print(data)
+                print(type(data))
+                r = await self.inbound_call(data)
+            except asyncio.CancelledError:
+                return None 
+            if isinstance(r, Exception):
+                raise r
+            return r
+
+        return _func
