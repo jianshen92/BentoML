@@ -201,3 +201,15 @@ for new_text in streamer:
 # %%
 await gen(prompt)
 # %%
+import inspect
+
+async def t():
+    yield 1
+
+print(type(t()))
+print(inspect.iscoroutinefunction(t))
+print(inspect.isgenerator(t()))
+print(inspect.isasyncgen(t()))
+# %%
+# %%
+# %%

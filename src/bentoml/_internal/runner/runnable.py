@@ -79,6 +79,7 @@ class Runnable:
     def method(
         meth: t.Callable[t.Concatenate[T, P], R],
         *,
+        stream: bool = False,
         batchable: bool = False,
         batch_dim: tuple[int, int] | int = 0,
         input_spec: AnyType | tuple[AnyType, ...] | None = None,
@@ -91,6 +92,7 @@ class Runnable:
     def method(
         meth: None = None,
         *,
+        stream: bool = False,
         batchable: bool = False,
         batch_dim: tuple[int, int] | int = 0,
         input_spec: AnyType | tuple[AnyType, ...] | None = None,
@@ -102,6 +104,7 @@ class Runnable:
     def method(
         meth: t.Callable[t.Concatenate[T, P], R] | None = None,
         *,
+        stream: bool = False,
         batchable: bool = False,
         batch_dim: tuple[int, int] | int = 0,
         input_spec: AnyType | tuple[AnyType, ...] | None = None,
@@ -116,68 +119,13 @@ class Runnable:
             return RunnableMethod(
                 meth,
                 RunnableMethodConfig(
+                    is_stream=stream,
                     batchable=batchable,
                     batch_dim=(batch_dim, batch_dim)
                     if isinstance(batch_dim, int)
                     else batch_dim,
                     input_spec=input_spec,
                     output_spec=output_spec,
-                ),
-            )
-
-        if callable(meth):
-            return method_decorator(meth)
-        return method_decorator
-
-    @overload
-    @staticmethod
-    def stream_method(
-        meth: t.Callable[t.Concatenate[T, P], R],
-        *,
-        batchable: bool = False,
-        batch_dim: tuple[int, int] | int = 0,
-        input_spec: AnyType | tuple[AnyType, ...] | None = None,
-        output_spec: AnyType | None = None,
-    ) -> RunnableMethod[T, P, R]:
-        ...
-
-    @overload
-    @staticmethod
-    def stream_method(
-        meth: None = None,
-        *,
-        batchable: bool = False,
-        batch_dim: tuple[int, int] | int = 0,
-        input_spec: AnyType | tuple[AnyType, ...] | None = None,
-        output_spec: AnyType | None = None,
-    ) -> t.Callable[[t.Callable[t.Concatenate[T, P], R]], RunnableMethod[T, P, R]]:
-        ...
-
-    @staticmethod
-    def stream_method(
-        meth: t.Callable[t.Concatenate[T, P], R] | None = None,
-        *,
-        batchable: bool = False,
-        batch_dim: tuple[int, int] | int = 0,
-        input_spec: AnyType | tuple[AnyType, ...] | None = None,
-        output_spec: AnyType | None = None,
-    ) -> (
-        t.Callable[[t.Callable[t.Concatenate[T, P], R]], RunnableMethod[T, P, R]]
-        | RunnableMethod[T, P, R]
-    ):
-        def method_decorator(
-            meth: t.Callable[t.Concatenate[T, P], R]
-        ) -> RunnableMethod[T, P, R]:
-            return RunnableMethod(
-                meth,
-                RunnableMethodConfig(
-                    batchable=batchable,
-                    batch_dim=(batch_dim, batch_dim)
-                    if isinstance(batch_dim, int)
-                    else batch_dim,
-                    input_spec=input_spec,
-                    output_spec=output_spec,
-                    is_stream=True
                 ),
             )
 

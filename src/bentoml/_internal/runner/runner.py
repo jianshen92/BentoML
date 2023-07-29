@@ -61,6 +61,13 @@ class RunnerMethod(t.Generic[T, P, R]):
         print(self.runner)
         print(self.name)
         return await self.runner._runner_handle.async_run_method(self, *args, **kwargs)
+    
+    def async_stream(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        print("--RunnerMethod.asnyc_stream--")
+        print(self.runner._runner_handle)
+        print(self.runner)
+        print(self.name)
+        return self.runner._runner_handle.async_stream_method(self, *args, **kwargs)
 
 
 def _to_lower_name(name: str) -> str:

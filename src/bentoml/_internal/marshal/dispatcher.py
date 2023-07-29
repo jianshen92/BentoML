@@ -423,7 +423,7 @@ class StreamDispatcher:
         pass
 
     async def inbound_call(self, data: Params[Payload]) -> t.Sequence[Params[Payload]]:
-        return await self.callback((data,))
+        return self.callback((data,))
 
     async def outbound_call(self):
         pass

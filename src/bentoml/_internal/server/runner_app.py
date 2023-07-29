@@ -261,17 +261,18 @@ class RunnerAppFactory(BaseAppFactory):
 
                 print(type(ret))
                 # STREAMING HACK
-                import inspect
-                if inspect.isgenerator(ret) or inspect.isasyncgen(ret):
+                if runner_method.config.is_stream:
                     # TODO: STREAMING
                     ## Converting Data to Container, has to happen here, and returns an async generator
-                    return ret
+                    async for data in ret:
+                        payload = AutoContainer.to_payload(data, 0)
+                        yield payload
                     
                 # END STREAMING HACK
-                print("---_mk_request_handler.infer_single--- ret---")
-                print(ret)
-                payload = AutoContainer.to_payload(ret, 0)
-                return (payload,)
+                # print("---_mk_request_handler.infer_single--- ret---")
+                # print(ret)
+                # payload = AutoContainer.to_payload(ret, 0)
+                # return (payload,)
 
             infer = self.dispatchers[runner_method.name](infer_single)
 
@@ -311,17 +312,23 @@ class RunnerAppFactory(BaseAppFactory):
                     content=str(e),
                     headers={
                         PAYLOAD_META_HEADER: "{}",
-                        "Content-Type": "application/vnd.bentoml.error",
+                        "Content-Type": "application/vnd.bentoml.DefaultContainer",
                         "Server": server_str,
                     },
                 )
             ## STREAMING HACK
-            import inspect
             from starlette.responses import StreamingResponse
-            if inspect.isgenerator(payload) or inspect.isasyncgen(payload):
+            if runner_method.config.is_stream:
                 print("--returning StreamResponse--")
                 print(payload)
-                return StreamingResponse(payload, media_type="text/event-stream")
+                async def streamer():
+                    async for data in payload:
+                        yield data.data
+                return StreamingResponse(streamer(), media_type="text/event-stream", headers={
+                        PAYLOAD_META_HEADER: "{}",
+                        "Content-Type": "application/vnd.bentoml.DefaultContainer",
+                        "Server": server_str,
+                    },)
             ## STREAMING HACK END
 
             if isinstance(payload, ServiceUnavailable):

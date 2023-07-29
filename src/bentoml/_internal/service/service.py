@@ -296,6 +296,7 @@ class Service:
         self,
         input: IODescriptor[t.Any],  # pylint: disable=redefined-builtin
         output: IODescriptor[t.Any],
+        stream: bool = False,
         name: t.Optional[str] = None,
         doc: t.Optional[str] = None,
         route: t.Optional[str] = None,
